@@ -249,7 +249,8 @@
     <div id="trip-list"></div>
     <button class="add-btn" onclick="openTripForm()"><span class="plus">+</span>新しい旅行を作成</button>
     <div style="margin-top: 24px;">
-      <button class="secondary-btn" onclick="loadSample()">🧳 サンプル（日光・鬼怒川）を追加</button>
+      <button class="secondary-btn" onclick="loadSample('nikko')">🧳 サンプル（日光・鬼怒川）を追加</button>
+      <button class="secondary-btn" style="margin-top: 5px;" onclick="loadSample('shikoku')">🧳 サンプル（四国）を追加</button>
       <button class="secondary-btn" onclick="exportData()">💾 データをファイルに保存 (Backup)</button>
       <button class="secondary-btn" style="margin-top: 5px;" onclick="importData()">📂 ファイルを読み込む (Restore)</button>
     </div>
@@ -320,6 +321,7 @@
       shinkansen: { label: '新幹線', icon: '🚄' },
       bus: { label: 'バス', icon: '🚌' },
       walk: { label: '徒歩', icon: '🚶' },
+      bike: { label: '自転車', icon: '🚲' },
       car: { label: '車', icon: '🚗' },
       plane: { label: '飛行機', icon: '✈️' },
       other: { label: 'その他', icon: '➡️' }
@@ -330,7 +332,8 @@
       cafe: { label: 'カフェ', icon: '☕' },
       stay: { label: '宿泊', icon: '🏨' },
       onsen: { label: '温泉', icon: '♨️' },
-      shop: { label: '買い物', icon: '🛍️' }
+      shop: { label: '買い物', icon: '🛍️' },
+      other: { label: 'その他', icon: '📌' } // コインロッカー・レンタルなど
     };
     // しおりの色テーマ（main=メイン色, sub=薄い背景, line=タイムラインの線, paper=紙の色）
     const THEMES = {
@@ -1082,12 +1085,15 @@
       input.click();
     }
 
-    // ===== サンプル（今のメモの日光・鬼怒川旅行） =====
-    function loadSample() {
+    // ===== サンプル（メモに書いていた旅行） =====
+    // mv: 移動（stops は [場所, 着, 発]）、sp: 観光・滞在
+    const mv = (date, mode, stops, legs, extra = {}) => ({ ...blankItem('move', date), mode,
+      stops: stops.map(([place, arr = '', dep = '']) => ({ place, arr, dep })), legs, ...extra });
+    const sp = (date, category, place, start = '', end = '', extra = {}) => ({ ...blankItem('spot', date), category, place, start, end, ...extra });
+
+    // 日光・鬼怒川温泉（1泊2日）
+    function sampleNikko() {
       const D1 = '2026-11-17', D2 = '2026-11-18';
-      const mv = (date, mode, stops, legs, extra = {}) => ({ ...blankItem('move', date), mode,
-        stops: stops.map(([place, arr = '', dep = '']) => ({ place, arr, dep })), legs, ...extra });
-      const sp = (date, category, place, start, end = '', extra = {}) => ({ ...blankItem('spot', date), category, place, start, end, ...extra });
       const items = [
         mv(D1, 'train', [['玉川学園前駅', '', '07:53'], ['代々木上原駅'], ['北千住駅']], ['小田急線', '千代田線']),
         mv(D1, 'train', [['北千住駅', '', '09:13'], ['東武日光駅', '10:50']], ['スペーシアX 3号'], { cost: 3585, prepaid: 1940, memo: '4号車1C席（特急券1,940円 支払済 + 運賃1,645円）' }),
@@ -1111,7 +1117,72 @@
         sp(D2, 'onsen', '日帰り温泉', '15:00', '16:20', { memo: '入れるところを探す' }),
         mv(D2, 'train', [['鬼怒川温泉駅', '', '16:40'], ['北千住駅', '18:32']], ['スペーシアX 10号'], { cost: 3585, prepaid: 1940, memo: '3号車14C席（特急券1,940円 支払済 + 運賃1,645円）' })
       ];
-      const trip = { id: newId(), title: '日光・鬼怒川温泉', place: '栃木県 日光市', startDate: D1, endDate: D2, theme: 'autumn', memo: '交通費 約7,000円 / 食費 約5,000円\n合計 約22,000円の予定', items };
+      return { title: '日光・鬼怒川温泉', place: '栃木県 日光市', startDate: D1, endDate: D2, theme: 'autumn', memo: '交通費 約7,000円 / 食費 約5,000円\n合計 約22,000円の予定', items };
+    }
+
+    // 四国（3泊4日・若者限定四国フリーきっぷでJRは0円）
+    function sampleShikoku() {
+      const D1 = '2026-12-14', D2 = '2026-12-15', D3 = '2026-12-16', D4 = '2026-12-17';
+      const items = [
+        // 1日目 愛媛
+        mv(D1, 'train', [['玉川学園前駅', '', '16:22'], ['町田駅', '16:25']], ['小田急線'], { cost: 136 }),
+        mv(D1, 'bus', [['町田BC', '', '16:35'], ['羽田空港第1ターミナル', '17:50']], ['連絡バス 京浜急行バス・空港リムジンバス 羽田空港第3ターミナル行（6のりば）'], { cost: 1700, prepaid: 1700, memo: '※まだ予約できていない' }),
+        sp(D1, 'food', '羽田空港第1ターミナル', '', '', { memo: '夜ごはん' }),
+        mv(D1, 'plane', [['羽田空港', '', '19:40'], ['松山空港', '21:15']], ['']),
+        mv(D1, 'bus', [['松山空港', '', '21:30'], ['JR松山駅', '21:45']], ['松山空港リムジンバス'], { cost: 980 }),
+        sp(D1, 'stay', 'ビジネスホテルあかやね', '22:00', '', { cost: 4400, prepaid: 4400, memo: 'チェックイン・素泊まり' }),
+        // 2日目 愛媛 → 香川 → 徳島
+        mv(D2, 'train', [['松山駅', '', '07:20'], ['宇多津駅', '09:23']], ['JR特急しおかぜ8号 岡山行（1番線）'], { memo: '朝ごはんはコンビニで買って車内で食べる' }),
+        sp(D2, 'other', '宇多津駅 コインロッカー', '09:25', '', { cost: 500, memo: '荷物を預ける' }),
+        mv(D2, 'walk', [['宇多津駅'], ['松の並木']], ['徒歩12分']),
+        sp(D2, 'sight', '松の並木', '09:40', '10:00', { memo: '瀬戸内海・瀬戸大橋が見渡せる' }),
+        mv(D2, 'train', [['宇多津駅', '', '10:17'], ['琴平駅', '10:41']], ['JR予讃線 琴平行']),
+        sp(D2, 'sight', '金刀比羅宮', '11:00', '12:15', { memo: '階段が1,300段。琴平駅から徒歩15〜20分' }),
+        mv(D2, 'train', [['琴平駅', '', '12:47'], ['丸亀駅', '13:02']], ['JR特急南風12号 岡山行']),
+        sp(D2, 'food', '麺処 綿谷 丸亀店', '', '', { memo: '昼ごはん。もう1店舗行く？' }),
+        mv(D2, 'train', [['丸亀駅', '', '14:28'], ['宇多津駅', '14:34', '14:40'], ['坂出駅', '14:45', '14:51'], ['高松駅', '15:05', '15:10'], ['徳島駅', '16:16']],
+          ['JR特急いしづち18号 高松行', 'JR予讃線 高松行', 'JR快速マリンライナー37号 高松行', 'JR特急うずしお19号 徳島行（3番線）'], { memo: '宇多津駅でコインロッカーの荷物を回収' }),
+        sp(D2, 'stay', 'リラクゼーション&スパ ホテル ネクセル', '16:30', '', { cost: 4500, prepaid: 4500, memo: 'チェックイン・素泊まり' }),
+        sp(D2, 'sight', '鷲の門・数奇屋橋・ポッポ街商店街'),
+        sp(D2, 'food', '中華そば 阿波屋', '', '', { memo: '夜ごはん' }),
+        // 3日目 徳島 → 高知 → 香川
+        sp(D3, 'other', '徳島駅前地下自転車駐車場', '06:00', '', { cost: 300, memo: 'シェアサイクルを借りる' }),
+        mv(D3, 'bike', [['徳島駅'], ['小松海岸']], ['自転車で30分']),
+        sp(D3, 'sight', '小松海岸', '06:45', '07:15', { memo: '日の出を見る' }),
+        sp(D3, 'food', '292 COFFEE & BAKE', '', '', { memo: '朝ごはん' }),
+        mv(D3, 'train', [['徳島駅', '', '09:00'], ['阿波池田駅', '10:15', '10:24'], ['大歩危駅', '10:41']], ['JR特急剣山1号 阿波池田行（2番線）', 'JR特急南風3号 高知行']),
+        sp(D3, 'other', '大歩危駅 コインロッカー', '10:45', '', { cost: 500, memo: '荷物を預ける' }),
+        mv(D3, 'walk', [['大歩危駅'], ['大歩危峡観光遊覧船']], ['徒歩20分']),
+        sp(D3, 'sight', '大歩危峡観光遊覧船', '11:05', '12:20', { cost: 1800 }),
+        sp(D3, 'other', '大歩危駅 コインロッカー', '12:40', '', { memo: '荷物を回収' }),
+        mv(D3, 'train', [['大歩危駅', '', '12:46'], ['高知駅', '13:39']], ['JR特急南風7号 高知行']),
+        mv(D3, 'car', [['駅レンタカー四国 高知営業所'], ['ひろめ市場'], ['高知空港'], ['新居緑地公園'], ['高知駅']], ['', '', '', ''], { cost: 4000, memo: 'レンタカー2時間半' }),
+        mv(D3, 'train', [['高知駅', '', '17:13'], ['宇多津駅', '19:06']], ['JR特急南風24号 岡山行（1番線）']),
+        sp(D3, 'stay', 'ホテルアネシス瀬戸大橋', '19:30', '', { cost: 5060, prepaid: 5060, memo: 'チェックイン・朝食付き' }),
+        sp(D3, 'sight', '瀬戸内海の夜', '', '', { memo: '少し回りたい' }),
+        sp(D3, 'food', '夜ごはん（未定）'),
+        // 4日目 香川 → 愛媛
+        sp(D4, 'food', 'ホテル朝食', '06:30'),
+        mv(D4, 'train', [['宇多津駅', '', '08:01'], ['今治駅', '09:30']], ['JR特急しおかぜ1号 松山行']),
+        sp(D4, 'other', '今治駅 コインロッカー', '09:30', '', { cost: 500, memo: '荷物を預ける' }),
+        sp(D4, 'other', 'ジャイアントストア今治', '09:30', '', { cost: 2970, prepaid: 2970, memo: 'レンタサイクルを借りる' }),
+        sp(D4, 'sight', 'しまなみ街道の入り口までサイクリング', '09:30', '10:30'),
+        sp(D4, 'other', '今治駅 コインロッカー', '10:30', '', { memo: '荷物を回収' }),
+        mv(D4, 'train', [['今治駅', '', '10:41'], ['松山駅', '11:15'], ['JR松山駅前駅', '', '11:26'], ['道後温泉駅', '11:51']], ['JR特急しおかぜ3号 松山行', '徒歩', '伊予鉄道市内線 5系統 道後温泉行'], { cost: 230 }),
+        sp(D4, 'food', '昼ごはん（未定）'),
+        sp(D4, 'cafe', 'カフェ（未定）'),
+        sp(D4, 'onsen', '道後温泉', '', '', { memo: '路面電車も見る' }),
+        mv(D4, 'bus', [['道後温泉前駅', '', '16:32'], ['松山空港', '17:10']], ['松山空港リムジンバス'], { cost: 1180 }),
+        mv(D4, 'plane', [['松山空港', '', '18:35'], ['羽田空港', '19:55']], ['']),
+        mv(D4, 'bus', [['羽田空港第1ターミナル', '', '20:35'], ['町田BC', '21:50']], ['連絡バス 京浜急行バス・空港リムジンバス'], { cost: 1700, prepaid: 1700, memo: '※まだ予約できていない' })
+      ];
+      return { title: '四国周遊', place: '愛媛・香川・徳島・高知', startDate: D1, endDate: D4, theme: 'sea',
+        memo: 'スマえき 若者限定四国フリーきっぷ（JR特急は0円）\nhttps://www.jr-eki.com/ticket/brand/2-3XF', items };
+    }
+
+    const SAMPLES = { nikko: sampleNikko, shikoku: sampleShikoku };
+    function loadSample(name) {
+      const trip = { id: newId(), ...SAMPLES[name]() };
       trips.push(trip);
       saveTrips();
       renderTrips();
